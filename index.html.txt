@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>全球记牌 AI</title>
+  <style>
+    :root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#0b0d10;color:#f4f6f8;font:14px system-ui,sans-serif}
+    .wrap{max-width:980px;margin:auto;padding:10px}.card{background:#15191e;border:1px solid #2a3037;border-radius:14px;padding:12px;margin:8px 0}
+    h1{font-size:24px;margin:4px 0 10px}.muted{color:#9ba4ae}.row{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+    input,select,button,textarea{border:1px solid #343b44;background:#0f1216;color:#fff;border-radius:10px;padding:8px;font-size:13px;width:100%}
+    button{width:auto;cursor:pointer;min-width:50px}button.primary{background:#5b46e8;border-color:#5b46e8}.danger{background:#5a2026}
+    .tabs button{margin-right:4px}.hidden{display:none}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:6px}
+    .suit{padding:6px;border-radius:10px;background:#0e1115;border:1px solid #2a3037;font-size:13px}
+    .red{color:#ff6877}
+    .log{max-height:120px;overflow:auto;background:#0d1013;padding:6px;border-radius:10px;white-space:pre-wrap;font-size:12px}
+    .flex{flex:1;min-width:80px}
+    .mahjong-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(45px,1fr));gap:4px;margin-top:6px}
+    .mahjong-item{background:#0e1115;border:1px solid #2a3037;border-radius:8px;padding:4px;text-align:center;font-size:13px}
+    .mahjong-item .count{color:#9ba4ae;font-size:12px;display:block}
+    .candidate{background:#0e1115;border:1px solid #2a3037;border-radius:8px;padding:6px;margin:4px 0}
+    .candidate .title{font-weight:bold;color:#5b46e8}
+    .import-btn{margin-left:6px;background:#2a7a3a;border-color:#2a7a3a;color:#fff;font-size:12px}
+    .compact .wrap { max-width: 100%; padding: 4px; }
+    .compact .card { padding: 6px; margin: 4px 0; }
+    .compact h1, .compact .muted, .compact .tabs, .compact #auth .tabs, .compact #auth h2, .compact #adminBox, .compact #historyPanel { display: none; }
+    .compact #auth { display: none; }
+    .compact #app { display: block !important; }
+    .compact .log { max-height: 80px; font-size: 11px; }
+    .compact .grid { grid-template-columns: repeat(auto-fit, minmax(70px, 1fr)); }
+    .compact .mahjong-grid { grid-template-columns: repeat(auto-fit, minmax(35px, 1fr)); }
+    .compact .suit { font-size: 11px; padding: 4px; }
+    .compact button { font-size: 11px; padding: 4px 8px; min-width: 40px; }
+    .compact input, .compact select { font-size: 11px; padding: 4px; }
+    .compact .wrap { padding: 2px; }
+    .compact .card { border-radius: 8px; }
+    .compact .row { gap: 4px; }
+    .float-btn { position: fixed; bottom: 10px; right: 10px; background: #5b46e8; border: none; border-radius: 50%; width: 50px; height: 50px; font-size: 24px; color: #fff; z-index: 9999; box-shadow: 0 4px 12px rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; }
+    .float-btn:hover { background: #7a6af8; }
+    .compact .float-btn { bottom: 5px; right: 5px; width: 40px; height: 40px; font-size: 20px; }
+    .settings-btn { background: #2a3a5a; border-color: #2a3a5a; }
+    @media (max-width:600px){.wrap{padding:6px}.card{padding:8px}.grid{grid-template-columns:repeat(auto-fit,minmax(80px,1fr))}.mahjong-grid{grid-template-columns:repeat(auto-fit,minmax(35px,1fr))}}
+  </style>
+</head>
+<body>
+<div class="wrap" id="mainWrap">
+  <h1>🃏 全球记牌 AI</h1>
+  <div id="msg" class="muted">从登录开始</div>
+
+  <section id="auth" class="card">
+    <div class="tabs"><button onclick="showAuth('login')">登录</button><button onclick="showAuth('register')">注册</button></div>
+    <div id="loginBox"><h2>登录</h2><input id="lu" placeholder="用户名" value="admin"><input id="lp" type="password" placeholder="密码" value="admin123"><button class="primary" onclick="login()">登录</button></div>
+    <div id="regBox" class="hidden"><h2>注册</h2><input id="ru" placeholder="用户名"><input id="rp" type="password" placeholder="密码（至少8位）"><input id="ri" placeholder="邀请码"><button class="primary" onclick="register()">注册</button></div>
+  </section>
+
+  <section id="app" class="hidden">
+    <div class="card row" id="topBar">
+      <button onclick="logout()">退出</button>
+      <button onclick="loadGames()">刷新玩法</button>
+      <button onclick="admin()">管理员</button>
+      <button onclick="showHistory()">📜 历史</button>
+      <button onclick="toggleCompact()" style="background:#2a7a3a;border-color:#2a7a3a;">⊡ 小窗</button>
+      <button onclick="showApiSettings()" class="settings-btn">⚙️ 设置</button>
+    </div>
+
+    <div class="card"><h2>🔎 AI 玩法搜索</h2><div class="row"><input id="gameQ" class="flex" placeholder="例如：斗地主、掼蛋"><button class="primary" onclick="searchGame()">AI搜索</button></div>
+      <div id="searchResult" class="log"></div>
+      <div id="importArea" style="margin-top:6px"></div>
+    </div>
+
+    <div class="card"><h2>🎮 当前玩法</h2><select id="games" style="width:100%"></select><div class="muted">管理员可导入AI搜索结果</div></div>
+
+    <div class="card" id="coreModule">
+      <div class="row"><h2 style="margin:0;font-size:18px;">📋 记牌器</h2><span class="muted" style="font-size:12px;">(已出牌)</span></div>
+      <div id="cards" class="grid"></div>
+      <div class="row" style="margin-top:4px"><button onclick="undo()">↩ 撤销</button><button onclick="resetCards()">🔄 重置</button><button onclick="saveState()">💾 保存</button></div>
+      <div class="log" id="historyLog"></div>
+    </div>
+
+    <div class="card"><h2>🀄 麻将记牌器</h2><div id="mahjong" class="mahjong-grid"></div><div class="row" style="margin-top:4px"><button onclick="resetMahjong()">🔄 重置麻将</button></div></div>
+
+    <div class="card" id="handModule">
+      <h2>✋ 手牌 <span class="muted" style="font-size:13px;font-weight:normal;">（自动识别更新）</span></h2>
+      <div id="handCards" class="grid"></div>
+      <div class="row" style="margin-top:4px"><button onclick="resetHand()">🔄 清空手牌</button><button onclick="analyzeHand()" class="primary" style="background:#e86b4a;">🤖 出牌分析</button></div>
+      <div id="analysisResult" class="log">等待分析…</div>
+    </div>
+
+    <div class="card"><h2>📡 实时屏幕分析</h2>
+      <div class="row"><input id="streamUrl" class="flex" placeholder="ScreenStream地址" value="http://localhost:8080"></div>
+      <div class="row">
+        <select id="visionMode" style="width:auto;flex:1;min-width:100px;">
+          <option value="played">记牌器（已出牌）</option>
+          <option value="hand">手牌</option>
+        </select>
+      </div>
+      <div class="row">
+        <input type="file" accept="image/*" id="uploadImage" style="display:none" onchange="handleImageUpload(event)">
+        <label for="uploadImage" class="primary" style="cursor:pointer;background:#5b46e8;padding:6px 12px;border-radius:8px;border:none;color:#fff;font-size:12px;">📤 上传</label>
+        <button onclick="startAutoCapture()" style="font-size:12px;">▶ 自动</button>
+        <button onclick="stopAutoCapture()" style="font-size:12px;">⏹ 停止</button>
+        <span style="font-size:12px;">间隔 <input id="interval" type="number" value="5" style="width:50px;padding:4px;font-size:12px;"> 秒</span>
+      </div>
+      <div id="vision" class="log">等待截图…</div>
+    </div>
+
+    <div class="card" id="historyPanel" style="display:none"><h2>📜 识别历史</h2><div id="historyList" class="log"></div></div>
+    <div class="card" id="adminBox" style="display:none"><h2>🔧 管理员</h2><button onclick="makeInvite()">生成邀请码</button><input id="invUses" type="number" value="1" style="width:60px"><input id="invDays" type="number" value="7" style="width:60px"><pre id="adminOut" class="log"></pre></div>
+  </section>
+</div>
+<button class="float-btn" id="floatToggle" style="display:none;" onclick="toggleCompact()">⊡</button>
+<script>
+let token=localStorage.getItem('token')||'',cardCounts={},historyArr=[],mahjongCounts={},handCards={},captureTimer=null,saveTimer=null,currentUser={role:'user'},isCompact=!1;const suits=[['♠','黑桃',''],['♥','红心','red'],['♦','方块','red'],['♣','梅花','']],ranks=['A','2','3','4','5','6','7','8','9','10','J','Q','K'],mahjongTypes=['一万','二万','三万','四万','五万','六万','七万','八万','九万','一筒','二筒','三筒','四筒','五筒','六筒','七筒','八筒','九筒','一索','二索','三索','四索','五索','六索','七索','八索','九索','東','南','西','北','中','發','白'],auth=document.getElementById('auth'),app=document.getElementById('app'),msg=document.getElementById('msg'),cards=document.getElementById('cards'),historyLog=document.getElementById('historyLog'),mahjongEl=document.getElementById('mahjong'),games=document.getElementById('games'),gameQ=document.getElementById('gameQ'),searchResult=document.getElementById('searchResult'),vision=document.getElementById('vision'),importArea=document.getElementById('importArea'),handCardsEl=document.getElementById('handCards'),analysisResult=document.getElementById('analysisResult'),floatToggle=document.getElementById('floatToggle'),visionMode=document.getElementById('visionMode');function msgText(t){msg.textContent=t}function showAuth(t){document.getElementById('loginBox').style.display='login'===t?'block':'none',document.getElementById('regBox').style.display='register'===t?'block':'none'}async function api(t,e={},n=2){const o=localStorage.getItem('apiBaseUrl')||'';let r=o+t;for(let i=0;i<=n;i++)try{const n={'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},o=await fetch(r,{...e,headers:{...n,...(e.headers||{})},body:e.body||void 0}),l=await o.json().catch(()=>({}));if(!o.ok)throw new Error(l.error||'请求失败');return l}catch(t){if(i===n)throw t;await new Promise(t=>setTimeout(t,500*(i+1)))}}function showApiSettings(){const t=localStorage.getItem('apiBaseUrl')||'',e=prompt('请输入后端 API 的 Base URL（例如：https://abc123.ngrok.io，如果使用本地相对路径请留空）:',t);null!==e&&(localStorage.setItem('apiBaseUrl',e.trim()),location.reload())}async function login(){try{const t=document.getElementById('lu'),e=document.getElementById('lp'),n=await api('/api/login',{method:'POST',body:JSON.stringify({username:t.value,password:e.value})});token=n.token,localStorage.setItem('token',token),await enter()}catch(t){msgText('登录失败：'+t.message)}}async function register(){try{const t=document.getElementById('ru'),e=document.getElementById('rp'),n=document.getElementById('ri'),o=await api('/api/register',{method:'POST',body:JSON.stringify({username:t.value,password:e.value,inviteCode:n.value})});token=o.token,localStorage.setItem('token',token),await enter()}catch(t){msgText('注册失败：'+t.message)}}function logout(){localStorage.removeItem('token'),token='',saveTimer&&clearInterval(saveTimer),location.reload()}async function enter(){try{const t=await api('/api/me');currentUser=t.user,msgText('已登录：'+t.user.username),auth.style.display='none',app.style.display='block',await loadState(),renderCards(),renderMahjong(),renderHandCards(),loadGames(),loadHistory(),saveTimer&&clearInterval(saveTimer),saveTimer=setInterval(saveState,1e4),floatToggle.style.display='block'}catch(t){logout()}}async function loadState(){try{const t=await api('/api/state');t.state&&(cardCounts=t.state.cardCounts||{},historyArr=t.state.historyArr||[],mahjongCounts=t.state.mahjongCounts||{})}catch(t){console.warn('加载状态失败',t)}}async function saveState(){try{await api('/api/state',{method:'POST',body:JSON.stringify({cardCounts,historyArr,mahjongCounts})})}catch(t){console.warn('保存状态失败',t)}}async function loadGames(){try{const t=await api('/api/games');games.innerHTML=t.games.map(t=>`<option value="${t.id}">${esc(t.name)} · ${esc(t.category||'其他')}</option>`).join('')||'<option>暂无玩法</option>'}catch(t){msgText(t.message)}}async function searchGame(){const t=gameQ.value.trim();if(!t)return searchResult.textContent='请输入搜索内容',void 0;searchResult.textContent='AI 搜索中…',importArea.innerHTML='';try{const e=await api('/api/ai/search-game',{method:'POST',body:JSON.stringify({query:t})});if(searchResult.textContent=JSON.stringify(e.result,null,2),e.result&&e.result.candidates&&e.result.candidates.length>0&&'admin'===currentUser.role){const t=e.result.candidates;window._candidates=t,console.log('[导入] 候选数据已存储:',t);let n='<div style="margin-top:6px"><b>点击导入到玩法库：</b></div>';t.forEach((t,e)=>{n+=`<div class="candidate"><span class="title">${esc(t.name)}</span> (${esc(t.category||'其他')}) <span class="muted">置信度: ${esc(t.confidence||'low')}</span><button class="import-btn" onclick="importGame(${e})">📥 导入</button><div style="font-size:12px;color:#9ba4ae;margin-top:2px">${esc(t.rulesSummary||'')}</div></div>`}),importArea.innerHTML=n}else'admin'!==currentUser.role?importArea.innerHTML='<div class="muted">管理员登录后可导入玩法</div>':importArea.innerHTML='<div class="muted">未找到候选玩法</div>'}catch(t){searchResult.textContent='搜索失败：'+t.message}}async function importGame(t){const e=window._candidates;if(!e||!e[t])return alert('候选数据不存在，请重新搜索'),console.error('候选数据缺失'),void 0;const n=e[t];try{const t=await api('/api/games',{method:'POST',body:JSON.stringify({name:n.name,category:n.category||'其他',aliases:n.aliases||[],players:n.players||'',deckOrTiles:n.deckOrTiles||'',rulesSummary:n.rulesSummary||'',scoring:n.scoring||'',regionalNotes:n.regionalNotes||'',confidence:n.confidence||'medium'})});t.success?(msgText('玩法 “'+n.name+'” 导入成功！'),loadGames(),importArea.innerHTML=''):msgText('导入失败：'+JSON.stringify(t))}catch(t){console.error('[导入] 错误:',t),msgText('导入失败：'+t.message)}}function renderCards(){cards.innerHTML='',suits.forEach(([t,e,n]) => {let o=document.createElement('div');o.className='suit '+n,o.innerHTML='<b>'+t+' '+e+'</b>',ranks.forEach(e=>{let n=t+e,r=document.createElement('button');r.textContent=e+' ('+(cardCounts[n]||0)+')',r.onclick=()=>hit(n,r),o.appendChild(r)}),cards.appendChild(o)}),updateHistoryLog()}function hit(t,e){cardCounts[t]=(cardCounts[t]||0)+1,historyArr.push(t),e&&(e.textContent=t.replace(/[♥♦♣♠]/,'')+' ('+cardCounts[t]+')'),renderCards(),updateHistoryLog(),saveState()}function undo(){let t=historyArr.pop();t&&(cardCounts[t]=Math.max(0,(cardCounts[t]||0)-1),renderCards(),updateHistoryLog(),saveState())}function resetCards(){if(0===historyArr.length)return;confirm('确定重置扑克计数？')&&(cardCounts={},historyArr=[],renderCards(),updateHistoryLog(),saveState())}function updateHistoryLog(){historyLog.textContent=historyArr.join(' → ')}function renderMahjong(){mahjongEl.innerHTML='',mahjongTypes.forEach(t=>{let e=document.createElement('div');e.className='mahjong-item';const n=mahjongCounts[t]||0;e.innerHTML=`<span>${t}</span><span class="count">${n}</span>`,e.onclick=()=>{mahjongCounts[t]=(mahjongCounts[t]||0)+1,renderMahjong(),saveState()},mahjongEl.appendChild(e)})}function resetMahjong(){confirm('确定重置麻将计数？')&&(mahjongCounts={},renderMahjong(),saveState())}function renderHandCards(){handCardsEl.innerHTML='',suits.forEach(([t,e,n])=>{let o=document.createElement('div');o.className='suit '+n,o.innerHTML='<b>'+t+' '+e+'</b>',ranks.forEach(e=>{let n=t+e,r=document.createElement('button');r.textContent=e+' ('+(handCards[n]||0)+')',r.onclick=()=>{handCards[n]=(handCards[n]||0)+1,renderHandCards()},r.ondblclick=()=>{handCards[n]>0&&(handCards[n]-=1,renderHandCards())},o.appendChild(r)}),handCardsEl.appendChild(o)})}function resetHand(){confirm('清空手牌？')&&(handCards={},renderHandCards())}async function analyzeHand(){const t=games.options[games.selectedIndex]?.text||'未知',e=[];for(const t in handCards)if(handCards[t]>0)for(let n=0;n<handCards[t];n++)e.push(t);if(0===e.length)return analysisResult.textContent='请先输入手牌（点击牌面累加）',void 0;analysisResult.textContent='AI 分析中…';try{const n=await api('/api/ai/analyze-hand',{method:'POST',body:JSON.stringify({gameName:t,handCards:e,playedCards:cardCounts})});n.success?analysisResult.textContent=JSON.stringify(n.result,null,2):analysisResult.textContent='分析失败：'+JSON.stringify(n)}catch(t){analysisResult.textContent='分析错误：'+t.message}}async function handleImageUpload(t){const e=t.target.files[0];if(!e)return;const n=new FileReader;n.onload=async function(t){const e=t.target.result;vision.textContent='分析上传的图片…';try{const t=await api('/api/vision/analyze',{method:'POST',body:JSON.stringify({imageData:e,gameName:games.options[games.selectedIndex]?.text||'未知',state:cardCounts})});if(t.success){const e=t.result;Array.isArray(e)&&e.length>0?(addCardsFromVision(e),vision.textContent='识别到 '+e.length+' 张牌，已自动计数。'):vision.textContent='未识别到牌面。原始返回：\n'+JSON.stringify(t.result,null,2)}else vision.textContent='识别失败：'+JSON.stringify(t)}catch(t){vision.textContent='识别失败：'+t.message}},n.readAsDataURL(e),t.target.value=''}async function startAutoCapture(){if(captureTimer)return vision.textContent='已在运行中',void 0;const t=1e3*Number(document.getElementById('interval').value)||5e3,e=document.getElementById('streamUrl').value.trim();if(!e)return vision.textContent='请先填入 ScreenStream 地址',void 0;vision.textContent='自动截图已启动，间隔 '+t/1e3+' 秒',await captureAndAnalyze(e),captureTimer=setInterval(()=>captureAndAnalyze(e),t)}function stopAutoCapture(){captureTimer&&(clearInterval(captureTimer),captureTimer=null,vision.textContent='自动截图已停止')}async function captureAndAnalyze(t){try{const e=await api('/api/screenshot/capture',{method:'POST',body:JSON.stringify({streamUrl:t})});if(!e.success)throw new Error('截图失败');const n=e.imageData,o=games.options[games.selectedIndex]?.text||'未知',l=await api('/api/vision/analyze',{method:'POST',body:JSON.stringify({imageData:n,gameName:o,state:cardCounts})});if(l.success){const t=l.result;Array.isArray(t)&&t.length>0?(addCardsFromVision(t),vision.textContent='自动识别到 '+t.length+' 张牌，已自动计数。'):vision.textContent='未识别到牌面。原始返回：\n'+JSON.stringify(l.result,null,2)}else vision.textContent='识别失败：'+JSON.stringify(l)}catch(t){vision.textContent='截图或识别错误：'+t.message}}function addCardsFromVision(t){const e=visionMode.value;let n=0,o=0;t.forEach(t=>{const r=t.name.trim(),l=t.confidence||0;if(!(l<.5))if('poker'===t.type&&/[♠♥♦♣]/.test(r))if('played'===e){void 0===cardCounts[r]&&(cardCounts[r]=0),cardCounts[r]+=1,historyArr.push(r),n++}else{void 0===handCards[r]&&(handCards[r]=0),handCards[r]+=1,n++}else if('mahjong'===t.type&&mahjongTypes.includes(r)&&'played'===e){void 0===mahjongCounts[r]&&(mahjongCounts[r]=0),mahjongCounts[r]+=1,o++}}),(n>0||o>0)&&(renderCards(),renderMahjong(),renderHandCards(),updateHistoryLog(),saveState(),addHistoryEntry('视觉识别',{cards:t}))}async function loadHistory(){try{const t=await api('/api/history'),e=document.getElementById('historyList');0===t.history.length?e.textContent='暂无历史记录':e.textContent=t.history.map(t=>{let e='';return t.details&&t.details.cards&&(e=' 识别: '+t.details.cards.map(t=>t.name).join(', ')),'['+new Date(t.timestamp).toLocaleString()+'] '+t.action+e}).join('\n')}catch(t){console.warn('加载历史失败',t)}}async function addHistoryEntry(t,e={}){try{const n=games.options[games.selectedIndex]?.text||'未知';await api('/api/history',{method:'POST',body:JSON.stringify({gameName:n,action:t,details:e})}),loadHistory()}catch(t){console.warn('记录历史失败',t)}}function showHistory(){const t=document.getElementById('historyPanel');t.style.display='none'===t.style.display?'block':'none','block'===t.style.display&&loadHistory()}async function admin(){const t=document.getElementById('adminBox');t.style.display='none'===t.style.display?'block':'none';if('block'===t.style.display)try{const e=await api('/api/admin/users');document.getElementById('adminOut').textContent=JSON.stringify(e.users,null,2)}catch(e){document.getElementById('adminOut').textContent=e.message}}async function makeInvite(){try{const t=await api('/api/admin/generate-invite',{method:'POST'});document.getElementById('adminOut').textContent='邀请码：'+t.inviteCode}catch(t){document.getElementById('adminOut').textContent=t.message}}function toggleCompact(){const t=document.getElementById('mainWrap'),e=document.getElementById('floatToggle');isCompact=!isCompact,isCompact?(t.classList.add('compact'),e.textContent='⊞'):(t.classList.remove('compact'),e.textContent='⊡')}function esc(t){return String(t).replace(/[&<>"']/g,t=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[t])}token&&enter();
+</script>
+</body>
+</html>
